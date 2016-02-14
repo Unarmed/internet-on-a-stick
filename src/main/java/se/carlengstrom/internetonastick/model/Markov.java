@@ -9,16 +9,17 @@ import java.util.stream.Stream;
  */
 public class Markov {
 
-    private Map<Long, Set<Long>> parentsOf = new HashMap<>();
-    private Map<Long, Set<Long>> childrenOf = new HashMap<>();
-    private Map<Long, Node> nodeById = new HashMap<>();
-    private Map<String, Set<Node>> nodesByWord = new HashMap<>();
+    private final int ANCESTOR_LEVEL = 2;
+
+    private final Map<Long, Set<Long>> parentsOf = new HashMap<>();
+    private final Map<Long, Set<Long>> childrenOf = new HashMap<>();
+    private final Map<Long, Node> nodeById = new HashMap<>();
+    private final Map<String, Set<Node>> nodesByWord = new HashMap<>();
 
     private long nodeCounter = 1;
-    private Node source = new Node(0, "SOURCE");
-    private Node sink = new Node(1, "SINK");
+    private final Node source = new Node(0, "SOURCE");
+    private final Node sink = new Node(1, "SINK");
 
-    private final int ANCESTOR_LEVEL = 2;
     private int sentenceCounter = 0;
 
     public Markov()
@@ -81,7 +82,7 @@ public class Markov {
     private void connectAncestorsOf(Node me, LinkedList<Node> ancestors, String[] data, int indexOfMe) {
         if(indexOfMe < ANCESTOR_LEVEL) { return; }
 
-        ArrayList<Node> ancestry = new ArrayList<Node>(ancestors);
+        ArrayList<Node> ancestry = new ArrayList<>(ancestors);
         Collections.reverse(ancestry);
         Stream<Node> nodeStream = nodesByWord.get(data[indexOfMe-1]).stream();
         nodeStream.filter(n -> hasCorrectLineage(n, ancestry, ANCESTOR_LEVEL))
@@ -132,9 +133,7 @@ public class Markov {
     //These methods expose internal state for testing. I don't particularly like that,
     //but that's what you get when you build a non-deterministic class
 
-    public Map<Long, Node> getAllNodes() {
-        return nodeById;
-    }
+    public Map<Long, Node> getAllNodes() { return nodeById; }
 
     public Map<Long, Set<Long>> getParentsOf() { return parentsOf; }
 

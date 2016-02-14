@@ -5,8 +5,8 @@ package se.carlengstrom.internetonastick.model;
  */
 public class Node {
 
-    private long id;
-    private String word;
+    private final long id;
+    private final String word;
 
     public Node(long id, String word) {
         this.id = id;
