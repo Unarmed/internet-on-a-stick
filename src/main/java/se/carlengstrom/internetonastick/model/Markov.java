@@ -3,6 +3,7 @@ package se.carlengstrom.internetonastick.model;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import se.carlengstrom.internetonastick.job.Job;
 
 /**
  * Created by eng
@@ -27,8 +28,12 @@ public class Markov {
         nodeById.put(0l, source);
         nodeById.put(1l, sink);
     }
-
+    
     public void insertSentence(String sentence) {
+        insertSentence(sentence, null);
+    }
+
+    public void insertSentence(String sentence, Job job) {
         String[] words = sentence.split(" ");
 
         LinkedList<Node> ancestors = new LinkedList<>();
@@ -61,9 +66,10 @@ public class Markov {
 
         addChild(parent, sink);
         sentenceCounter++;
-        if(sentenceCounter % 10 == 0) {
-            System.out.println("Read " + sentenceCounter + " sentences.");
-            System.out.println("Last line was: " + sentence);
+        
+        if(job != null && sentenceCounter % 1000 == 0) {
+            job.StatusString = "Read " + sentenceCounter + " sentences.\n" + 
+                    "Sample: " + generateSentence();
         }
     }
 
@@ -119,13 +125,14 @@ public class Markov {
 
     public String generateSentence() {
         Node current = source;
-        List<Node> sentence = new LinkedList<>();
-        sentence.add(current);
+        List<Node> sentence = new LinkedList<>();        
 
         while(current != sink) {
             List<Node> children = childrenOf(current).collect(Collectors.toList());
             current = children.get((int)(Math.random()*children.size()));
-            sentence.add(current);
+            if(current != sink) {
+                sentence.add(current);
+            }
         }
         return sentence.stream().map(x -> x.getWord()).reduce( (x,y) -> x + " " + y  ).get();
     }

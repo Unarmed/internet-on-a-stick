@@ -12,3 +12,6 @@ buildNumber.properties
 .idea/
 *.iml
 *.iws
+
+#Netbeans
+nbactions.xml

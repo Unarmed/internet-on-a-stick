@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.text.BreakIterator;
 import java.util.Locale;
+import se.carlengstrom.internetonastick.job.Job;
 
 /**
  * Created by eng on 2/13/16.
@@ -20,8 +21,7 @@ public class MarkovBuilder {
      *
      * Good for parsing books and the like
      */
-    public static Markov buildMarkovFromText(String path) throws IOException {
-        Markov m = new Markov();
+    public static Markov appendMarkovFromText(Markov m, String path) throws IOException {
         String allText = String.join(" ", Files.readAllLines(Paths.get(path)));
         BreakIterator it = BreakIterator.getSentenceInstance(Locale.ENGLISH);
 
@@ -37,9 +37,12 @@ public class MarkovBuilder {
      * Builds a Markov from file where each sentence is assumed to be a new line. Any special characters on each line
      * is assumed to be part of the sentence.
      */
-    public static Markov buildMarkovFromLineDelimitedText(String path) throws IOException {
-        Markov m = new Markov();
-        Files.readAllLines(Paths.get(path)).forEach(m::insertSentence);
+    public static Markov appendMarkovFromLineDelimitedText(Markov m, String path, Job job) throws IOException {
+        BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(path), "UTF8"));
+        String read;
+        while((read = reader.readLine()) != null ) {
+            m.insertSentence(read, job);
+        }
         return m;
     }
 }
