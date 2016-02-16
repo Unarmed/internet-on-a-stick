@@ -7,6 +7,7 @@ package se.carlengstrom.internetonastick.http;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import java.io.File;
@@ -36,21 +37,24 @@ public class HttpServer {
         get("/", (req, res) -> UsageApi());
         get("/:user/createMarkov", (req, res) -> getCreateMarkov(req,res));
         post("/:user/createMarkov", (req, res) -> postCreateMarkov(req,res));
-        
+
         get("/:user/:markov/appendLineFile", (req,res) -> getAppendLineFile(req,res));
         post("/:user/:markov/appendLineFile", (req,res) -> postAppendLineFile(req,res));
-        
-        get(":user/:markov", (req,res) -> getMarkov(req,res));
-        
+
         get("/jobs/:jobName", (req,res) -> getJob(req,res));
+        get("/jobs", (req,res) -> getJobs(req,res));
+
+        get("/:user/:markov", (req,res) -> getMarkov(req,res));
     }
 
     private String UsageApi() {
-        return "Hi there. GET an endpoint to see what you can do with it. Available enpoints are:</br>" +
+        return "Hi there. GET an endpoint to see what you can do with it. Available enpoints are (names starting with ':' are variables):</br>" +
                 "<ul>" + 
                 "<li>/:user/createMarkov/</li>" +
                 "<li>/:user/:markov/appendLineInFile</li>" +
+                "<li>/:user/:markov</li>" +
                 "<li>/jobs/:jobName/</li>" +
+                "<li>/jobs</li>" +
                 "</ul>";
     }
 
@@ -63,15 +67,23 @@ public class HttpServer {
         String user = req.params("user");
         JsonObject jsonObject = new JsonParser().parse(req.body()).getAsJsonObject();
         String markovName = jsonObject.get("name").getAsString();
-        
+
         if(!markovs.containsKey(user)) {
             markovs.put(user, new HashMap<>());
         }
         markovs.get(user).put(markovName, new Markov());
-        
+
         Gson gson = new GsonBuilder().create();
-        String json = gson.toJson(markovs.get(user).get(markovName));            
-        try (FileOutputStream stream = new FileOutputStream("data/"+user+"/"+markovName+"/markov.json", false)) {
+        String json = gson.toJson(markovs.get(user).get(markovName));
+
+        String path = "data/"+user+"/"+markovName+"/";
+        File directory = new File(path);
+        directory.mkdirs();
+        File file = new File(path+"markov.json");
+        if(!file.exists()) {
+            file.createNewFile();
+        }
+        try (FileOutputStream stream = new FileOutputStream(file, false)) {
             stream.write(json.getBytes());
         }
         
@@ -89,31 +101,31 @@ public class HttpServer {
         String user = req.params("user");
         String markov = req.params("markov");
         JsonObject jsonObject = new JsonParser().parse(req.body()).getAsJsonObject();
-        
+
         String path = "data/"+user+"/"+markov+"/source.txt";
         byte[] markovData = DatatypeConverter.parseBase64Binary(jsonObject.get("data").getAsString());
-               
+
         File folder = new File("data/"+user+"/"+markov+"/");
         folder.mkdirs();
-        
+
         File source = new File(path);
-        if(!source.exists()) {            
+        if(!source.exists()) {
             source.createNewFile();
         }
         try (FileOutputStream stream = new FileOutputStream(path, true)) {
             stream.write(markovData);
         }
-        
+
         File temp = File.createTempFile("markov-input-partial", "txt");
         try (FileOutputStream stream = new FileOutputStream(temp, true)) {
             stream.write(markovData);
         }
-        
-        Markov m = markovs.get(user).get(markov);        
+
+        Markov m = markovs.get(user).get(markov);
         AppendLineFileToMarkovJob job = new AppendLineFileToMarkovJob(m, folder.getAbsolutePath());
-        
+
         new Thread(job).start();
-        
+
         String jobName = user+System.currentTimeMillis();
         jobs.put(jobName, job);
         return "{ jobName:\""+jobName+"\"}";
@@ -132,7 +144,7 @@ public class HttpServer {
     private String getMarkov(Request req, Response res) {
         String user = req.params("user");
         String markov = req.params("markov");
-        
+
         Markov m = markovs.get(user).get(markov);
         if(m != null) {
             return "{ sentence:\""+ m.generateSentence() + "\" }";
@@ -140,8 +152,16 @@ public class HttpServer {
             return "GET here with a valid markov name to get a sentence";
         }
     }
-    
+
+    private String getJobs(Request req, Response res) {
+        JsonArray arr = new JsonArray();
+        jobs.keySet().forEach(arr::add);
+        JsonObject obj = new JsonObject();
+        obj.add("jobs", arr);
+        return obj.toString();
+    }
+
     public static void main(String[] args) {
-        HttpServer server = new HttpServer();
+        new HttpServer();
     }
 }
