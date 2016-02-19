@@ -156,9 +156,16 @@ public class HttpServer {
 
         Markov m = markovs.get(user).get(markov);
         if(m != null) {
-            JsonObject obj = new JsonObject();
-            obj.addProperty("sentence", m.generateSentence());
-            return obj.toString();
+            try {
+                JsonObject obj = new JsonObject();
+                obj.addProperty("sentence", m.generateSentence());
+                return obj.toString();
+            } catch (IllegalStateException ise) {
+                res.status(400);
+                JsonObject obj = new JsonObject();
+                obj.addProperty("message", ise.getMessage());
+                return obj.toString();
+            }
         } else {
             return "GET here with a valid markov name to get a sentence";
         }

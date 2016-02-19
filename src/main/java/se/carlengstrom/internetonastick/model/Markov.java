@@ -124,8 +124,13 @@ public class Markov {
     }
 
     public String generateSentence() {
+        //Don't generate sentences for empty chains.
+        if(!childrenOf(source).findAny().isPresent()) {
+            throw new IllegalStateException("Cannot generate sentences from empty markov chain");
+        }
+
         Node current = source;
-        List<Node> sentence = new LinkedList<>();        
+        List<Node> sentence = new LinkedList<>();
 
         while(current != sink) {
             List<Node> children = childrenOf(current).collect(Collectors.toList());
@@ -134,6 +139,7 @@ public class Markov {
                 sentence.add(current);
             }
         }
+
         return sentence.stream().map(x -> x.getWord()).reduce( (x,y) -> x + " " + y  ).get();
     }
 
