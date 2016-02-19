@@ -29,10 +29,10 @@ import static spark.Spark.*;
  * @author Eng
  */
 public class HttpServer {
-    
+
     private final Map<String, Map<String, Markov>> markovs = new HashMap<>();
     private final Map<String, Job> jobs = new HashMap<>();
-    
+
     public HttpServer() {
         get("/", (req, res) -> UsageApi());
         get("/:user/createMarkov", (req, res) -> getCreateMarkov(req,res));
@@ -86,8 +86,10 @@ public class HttpServer {
         try (FileOutputStream stream = new FileOutputStream(file, false)) {
             stream.write(json.getBytes());
         }
-        
-        return "{ name:\""+markovName+"\" }";
+
+        JsonObject obj = new JsonObject();
+        obj.addProperty("name", markovName);
+        return obj.toString();
     }
 
     private String getAppendLineFile(Request req, Response res) {
@@ -128,7 +130,10 @@ public class HttpServer {
 
         String jobName = user+System.currentTimeMillis();
         jobs.put(jobName, job);
-        return "{ jobName:\""+jobName+"\"}";
+
+        JsonObject obj = new JsonObject();
+        obj.addProperty("jobName", jobName);
+        return obj.toString();
     }
 
     private String getJob(Request req, Response res) {
@@ -137,7 +142,11 @@ public class HttpServer {
         if(j == null) {
             return "GET here with a valid job name to see its status";
         } else {
-            return "{ jobName:\""+jobname+"\", status:\""+j.StatusString+"\", complete:\""+j.isComplete+"\"}";
+            JsonObject obj = new JsonObject();
+            obj.addProperty("jobName", jobname);
+            obj.addProperty("status", j.statusString);
+            obj.addProperty("complete", j.isComplete);
+            return obj.toString();
         }
     }
 
@@ -147,7 +156,9 @@ public class HttpServer {
 
         Markov m = markovs.get(user).get(markov);
         if(m != null) {
-            return "{ sentence:\""+ m.generateSentence() + "\" }";
+            JsonObject obj = new JsonObject();
+            obj.addProperty("sentence", m.generateSentence());
+            return obj.toString();
         } else {
             return "GET here with a valid markov name to get a sentence";
         }

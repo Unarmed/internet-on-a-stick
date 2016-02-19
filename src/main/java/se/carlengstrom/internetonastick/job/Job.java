@@ -10,6 +10,6 @@ package se.carlengstrom.internetonastick.job;
  * @author Eng
  */
 public abstract class Job implements Runnable {
-    public String StatusString;
+    public String statusString;
     public boolean isComplete;
 }

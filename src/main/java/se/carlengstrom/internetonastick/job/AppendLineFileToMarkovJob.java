@@ -24,7 +24,7 @@ public class AppendLineFileToMarkovJob extends Job {
     public AppendLineFileToMarkovJob(Markov m, String directory) {
         this.m = m;
         this.directory = directory;
-        this.StatusString = "Starting...";
+        this.statusString = "Starting...";
         this.isComplete = false;
     }
     
@@ -39,7 +39,7 @@ public class AppendLineFileToMarkovJob extends Job {
                 stream.write(json.getBytes());
             }
         } catch (IOException ex) {
-            this.StatusString = "Job failed due to IOException. " + ex.getMessage();
+            this.statusString = "Job failed due to IOException. " + ex.getMessage();
         } finally {
             this.isComplete = true;
         }

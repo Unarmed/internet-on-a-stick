@@ -68,7 +68,7 @@ public class Markov {
         sentenceCounter++;
         
         if(job != null && sentenceCounter % 1000 == 0) {
-            job.StatusString = "Read " + sentenceCounter + " sentences.\n" + 
+            job.statusString = "Read " + sentenceCounter + " sentences.\n" + 
                     "Sample: " + generateSentence();
         }
     }
