@@ -68,8 +68,8 @@ public class Markov {
         sentenceCounter++;
         
         if(job != null && sentenceCounter % 1000 == 0) {
-            job.statusString = "Read " + sentenceCounter + " sentences.\n" + 
-                    "Sample: " + generateSentence();
+            job.setStatus("Read " + sentenceCounter + " sentences.");
+            job.setSample(generateSentence());
         }
     }
 

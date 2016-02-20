@@ -18,30 +18,21 @@ import se.carlengstrom.internetonastick.model.builders.MarkovBuilder;
  */
 public class AppendLineFileToMarkovJob extends Job {
 
-    private final Markov m;
     private final String directory;
 
     public AppendLineFileToMarkovJob(Markov m, String directory) {
-        this.m = m;
-        this.directory = directory;
-        this.statusString = "Starting...";
-        this.isComplete = false;
+        super(m);
+        this.directory = directory;        
     }
     
     
     @Override
-    public void run() {
-        try {
-            Markov out = MarkovBuilder.appendMarkovFromLineDelimitedText(m, directory+"/source.txt", this);
-            Gson gson = new GsonBuilder().create();
-            String json = gson.toJson(m);            
-            try (FileOutputStream stream = new FileOutputStream(directory+"/markov.json", false)) {
-                stream.write(json.getBytes());
-            }
-        } catch (IOException ex) {
-            this.statusString = "Job failed due to IOException. " + ex.getMessage();
-        } finally {
-            this.isComplete = true;
+    public void jobRun() throws IOException {
+        Markov out = MarkovBuilder.appendMarkovFromLineDelimitedText(getMarkov(), directory+"/source.txt", this);
+        Gson gson = new GsonBuilder().create();
+        String json = gson.toJson(getMarkov());
+        try (FileOutputStream stream = new FileOutputStream(directory+"/markov.json", false)) {
+            stream.write(json.getBytes());
         }
     }
     

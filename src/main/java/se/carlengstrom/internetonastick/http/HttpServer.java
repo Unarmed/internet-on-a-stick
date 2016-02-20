@@ -18,6 +18,7 @@ import java.util.Map;
 import javax.xml.bind.DatatypeConverter;
 import se.carlengstrom.internetonastick.job.AppendLineFileToMarkovJob;
 import se.carlengstrom.internetonastick.job.Job;
+import se.carlengstrom.internetonastick.job.JobRunner;
 import se.carlengstrom.internetonastick.model.Markov;
 import spark.Request;
 import spark.Response;
@@ -32,8 +33,10 @@ public class HttpServer {
 
     private final Map<String, Map<String, Markov>> markovs = new HashMap<>();
     private final Map<String, Job> jobs = new HashMap<>();
+    private JobRunner runner;
 
-    public HttpServer() {
+    public HttpServer(JobRunner runner) {
+        this.runner = runner;
         get("/", (req, res) -> UsageApi());
         get("/:user/createMarkov", (req, res) -> getCreateMarkov(req,res));
         post("/:user/createMarkov", (req, res) -> postCreateMarkov(req,res));
@@ -126,7 +129,7 @@ public class HttpServer {
         Markov m = markovs.get(user).get(markov);
         AppendLineFileToMarkovJob job = new AppendLineFileToMarkovJob(m, folder.getAbsolutePath());
 
-        new Thread(job).start();
+        runner.scheduleJob(job);
 
         String jobName = user+System.currentTimeMillis();
         jobs.put(jobName, job);
@@ -144,8 +147,10 @@ public class HttpServer {
         } else {
             JsonObject obj = new JsonObject();
             obj.addProperty("jobName", jobname);
-            obj.addProperty("status", j.statusString);
-            obj.addProperty("complete", j.isComplete);
+            obj.addProperty("status", j.getStaus().toString());
+            obj.addProperty("statusString", j.getStatusString());
+            obj.addProperty("sample", j.getSample());
+            obj.addProperty("duration", j.getDuration() + " ms");
             return obj.toString();
         }
     }
@@ -180,6 +185,8 @@ public class HttpServer {
     }
 
     public static void main(String[] args) {
-        new HttpServer();
+        JobRunner runner = new JobRunner();
+        runner.startScheduler();
+        new HttpServer(runner);
     }
 }
