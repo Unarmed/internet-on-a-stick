@@ -18,17 +18,30 @@ import se.carlengstrom.internetonastick.model.builders.MarkovBuilder;
  */
 public class AppendLineFileToMarkovJob extends Job {
 
-    private final String directory;
+    public enum Delimiter {
+        LINE,
+        PERIOD
+    }
 
-    public AppendLineFileToMarkovJob(Markov m, String directory) {
+    private final String directory;
+    private final Delimiter delimiter;
+
+    public AppendLineFileToMarkovJob(Markov m, String directory, Delimiter delimiter) {
         super(m);
-        this.directory = directory;        
+        this.directory = directory;
+        this.delimiter = delimiter;
     }
     
     
     @Override
     public void jobRun() throws IOException {
-        Markov out = MarkovBuilder.appendMarkovFromLineDelimitedText(getMarkov(), directory+"/source.txt", this);
+        if(delimiter == Delimiter.LINE) {
+            MarkovBuilder
+                .appendMarkovFromLineDelimitedText(getMarkov(), directory + "/source.txt", this);
+        } else if (delimiter == Delimiter.PERIOD) {
+            MarkovBuilder
+                .appendMarkovFromPeriodDelimitedText(getMarkov(), directory + "/source.txt", this);
+        }
         Gson gson = new GsonBuilder().create();
         String json = gson.toJson(getMarkov());
         try (FileOutputStream stream = new FileOutputStream(directory+"/markov.json", false)) {

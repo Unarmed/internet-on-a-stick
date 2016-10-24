@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.Map;
 import javax.xml.bind.DatatypeConverter;
 import se.carlengstrom.internetonastick.job.AppendLineFileToMarkovJob;
+import se.carlengstrom.internetonastick.job.AppendLineFileToMarkovJob.Delimiter;
 import se.carlengstrom.internetonastick.job.Job;
 import se.carlengstrom.internetonastick.job.JobRunner;
 import se.carlengstrom.internetonastick.model.Markov;
@@ -127,7 +128,10 @@ public class HttpServer {
         }
 
         Markov m = markovs.get(user).get(markov);
-        AppendLineFileToMarkovJob job = new AppendLineFileToMarkovJob(m, folder.getAbsolutePath());
+        AppendLineFileToMarkovJob job = new AppendLineFileToMarkovJob(
+            m,
+            folder.getAbsolutePath(),
+            Delimiter.LINE);
 
         runner.scheduleJob(job);
 
