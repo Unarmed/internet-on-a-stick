@@ -6,4 +6,7 @@ Internet on a stick, or InternetOnnaStick as it is commonly called, is a small p
 
 InternetOnnaStick's current incarnation is a small HTTP server where users can POST bodies of text for parsing and GET new sentences back out. Happy garbling!
 
+## Thanks to 
+[https://github.com/widarlein] for input and debugging
+
 // Unarmed
