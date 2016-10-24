@@ -1,5 +1,6 @@
 package se.carlengstrom.internetonastick.model.builders;
 
+import se.carlengstrom.internetonastick.job.AppendLineFileToMarkovJob;
 import se.carlengstrom.internetonastick.model.Markov;
 
 import java.io.*;
@@ -7,6 +8,8 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.text.BreakIterator;
 import java.util.Locale;
+import java.util.Scanner;
+
 import se.carlengstrom.internetonastick.job.Job;
 
 /**
@@ -44,5 +47,20 @@ public class MarkovBuilder {
             m.insertSentence(read, job);
         }
         return m;
+    }
+
+    public static Markov appendMarkovFromPeriodDelimitedText(
+        final Markov markov,
+        final String path,
+        final Job job) throws IOException {
+        final Scanner scanner = new Scanner(new File(path));
+        scanner.useDelimiter("\\.");
+        while(scanner.hasNext()) {
+            final String sentence = scanner.next();
+            if(!sentence.isEmpty()) {
+                markov.insertSentence(sentence, job);
+            }
+        }
+        return markov;
     }
 }
