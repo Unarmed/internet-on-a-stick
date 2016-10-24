@@ -80,5 +80,8 @@ public class JobRunner {
         }
     }
 
-    
+
+    public void stopScheduler() {
+        isRunning = false;
+    }
 }
