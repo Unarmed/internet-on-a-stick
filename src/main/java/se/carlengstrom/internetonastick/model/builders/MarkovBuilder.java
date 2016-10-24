@@ -56,7 +56,10 @@ public class MarkovBuilder {
         final Scanner scanner = new Scanner(new File(path));
         scanner.useDelimiter("\\.");
         while(scanner.hasNext()) {
-            final String sentence = scanner.next();
+            final String sentence = scanner.next()
+                .replaceAll("\\r", "")
+                .replaceAll("\\n", " ")
+                .trim();
             if(!sentence.isEmpty()) {
                 markov.insertSentence(sentence, job);
             }
