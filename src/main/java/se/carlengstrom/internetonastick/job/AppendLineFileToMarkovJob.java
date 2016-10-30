@@ -5,12 +5,11 @@
  */
 package se.carlengstrom.internetonastick.job;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import se.carlengstrom.internetonastick.model.Markov;
 import se.carlengstrom.internetonastick.model.builders.MarkovBuilder;
+
+import java.io.IOException;
 
 /**
  *
@@ -42,11 +41,8 @@ public class AppendLineFileToMarkovJob extends Job {
             MarkovBuilder
                 .appendMarkovFromPeriodDelimitedText(getMarkov(), directory + "/source.txt", this);
         }
-        Gson gson = new GsonBuilder().create();
-        String json = gson.toJson(getMarkov());
-        try (FileOutputStream stream = new FileOutputStream(directory+"/markov.json", false)) {
-            stream.write(json.getBytes());
-        }
+
+        final ObjectMapper mapper = new ObjectMapper();
+        mapper.writeValueAsString(getMarkov());
     }
-    
 }

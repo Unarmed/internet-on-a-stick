@@ -5,17 +5,10 @@
  */
 package se.carlengstrom.internetonastick.http;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import javax.xml.bind.DatatypeConverter;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.norberg.automatter.jackson.AutoMatterModule;
+import se.carlengstrom.internetonastick.http.payload.*;
 import se.carlengstrom.internetonastick.job.AppendLineFileToMarkovJob;
 import se.carlengstrom.internetonastick.job.AppendLineFileToMarkovJob.Delimiter;
 import se.carlengstrom.internetonastick.job.Job;
@@ -24,19 +17,26 @@ import se.carlengstrom.internetonastick.model.Markov;
 import spark.Request;
 import spark.Response;
 
-import static spark.Spark.*;
+import javax.xml.bind.DatatypeConverter;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
-/**
- *
- * @author Eng
- */
+import static spark.Spark.get;
+import static spark.Spark.post;
+
 public class HttpServer {
 
     private final Map<String, Map<String, Markov>> markovs = new HashMap<>();
     private final Map<String, Job> jobs = new HashMap<>();
-    private JobRunner runner;
+    private final JobRunner runner;
 
-    public HttpServer(JobRunner runner) {
+    private final ObjectMapper mapper = new ObjectMapper()
+            .registerModule(new AutoMatterModule());
+
+    public HttpServer(final JobRunner runner) {
         this.runner = runner;
         get("/", (req, res) -> UsageApi());
         get("/:user/createMarkov", (req, res) -> getCreateMarkov(req,res));
@@ -62,56 +62,52 @@ public class HttpServer {
                 "</ul>";
     }
 
-    private String getCreateMarkov(Request req, Response res) {
+    private String getCreateMarkov(final Request req, final Response res) {
         return "<p>POST here with JSON payload of a single name parameter to create or overwrite a markov object.</p>" + 
                 "<p>Response is JSON with the name</p>";
     }
 
-    private String postCreateMarkov(Request req, Response res) throws IOException {
-        String user = req.params("user");
-        JsonObject jsonObject = new JsonParser().parse(req.body()).getAsJsonObject();
-        String markovName = jsonObject.get("name").getAsString();
+    private String postCreateMarkov(final Request req, final Response res) throws IOException {
+        final String user = req.params("user");
+        final CreateMarkovRequest createRequest = mapper.readValue(req.body(), CreateMarkovRequest.class);
 
         if(!markovs.containsKey(user)) {
             markovs.put(user, new HashMap<>());
         }
-        markovs.get(user).put(markovName, new Markov());
+        markovs.get(user).put(createRequest.name(), new Markov());
 
-        Gson gson = new GsonBuilder().create();
-        String json = gson.toJson(markovs.get(user).get(markovName));
-
-        String path = "data/"+user+"/"+markovName+"/";
-        File directory = new File(path);
+        final String path = "data/"+user+"/"+createRequest.name()+"/";
+        final File directory = new File(path);
         directory.mkdirs();
-        File file = new File(path+"markov.json");
+        final File file = new File(path+"markov.json");
         if(!file.exists()) {
             file.createNewFile();
         }
-        try (FileOutputStream stream = new FileOutputStream(file, false)) {
-            stream.write(json.getBytes());
+        try (final FileOutputStream stream = new FileOutputStream(file, false)) {
+            stream.write(req.bodyAsBytes());
         }
 
-        JsonObject obj = new JsonObject();
-        obj.addProperty("name", markovName);
-        return obj.toString();
+        res.status(202);
+        return req.body();
     }
 
-    private String getAppendLineFile(Request req, Response res) {
+    private String getAppendLineFile(final Request req, final Response res) {
         return "<p>POST here with JSON payload of a single data parameter ( { data:\"BASE64\" } ). data should be the base64 of the data you wish to append."+
                 "Each line will be interpreted as a single sentence, regardless of content.</p>" + 
                 "<p>Response is JSON with a job which you can query for status later on at /jobs/:jobname</p>" +
                 "<p>Please only post stuff that you have, you know, the <i>legal right</i> to upload and whatnot</p>";
     }
 
-    private String postAppendLineFile(Request req, Response res) throws IOException {
-        String user = req.params("user");
-        String markov = req.params("markov");
-        JsonObject jsonObject = new JsonParser().parse(req.body()).getAsJsonObject();
+    private String postAppendLineFile(final Request req, final Response res) throws IOException {
+        final String user = req.params("user");
+        final String markovName = req.params("markov");
+        final String asdasd = req.body();
+        final AppendLineFileRequest request = mapper.readValue(req.body(), AppendLineFileRequest.class);
 
-        String path = "data/"+user+"/"+markov+"/source.txt";
-        byte[] markovData = DatatypeConverter.parseBase64Binary(jsonObject.get("data").getAsString());
+        final String path = "data/"+user+"/"+markovName+"/source.txt";
+        final byte[] markovData = DatatypeConverter.parseBase64Binary(request.data());
 
-        File folder = new File("data/"+user+"/"+markov+"/");
+        final File folder = new File("data/"+user+"/"+markovName+"/");
         folder.mkdirs();
 
         File source = new File(path);
@@ -122,70 +118,65 @@ public class HttpServer {
             stream.write(markovData);
         }
 
-        File temp = File.createTempFile("markov-input-partial", "txt");
+        final File temp = File.createTempFile("markov-input-partial", "txt");
         try (FileOutputStream stream = new FileOutputStream(temp, true)) {
             stream.write(markovData);
         }
 
-        Markov m = markovs.get(user).get(markov);
-        AppendLineFileToMarkovJob job = new AppendLineFileToMarkovJob(
-            m,
+        final Markov markov = markovs.get(user).get(markovName);
+        final AppendLineFileToMarkovJob job = new AppendLineFileToMarkovJob(
+            markov,
             folder.getAbsolutePath(),
             Delimiter.LINE);
 
         runner.scheduleJob(job);
 
-        String jobName = user+System.currentTimeMillis();
+        final String jobName = user+System.currentTimeMillis();
         jobs.put(jobName, job);
-
-        JsonObject obj = new JsonObject();
-        obj.addProperty("jobName", jobName);
-        return obj.toString();
+        return mapper.writeValueAsString(new CreateMarkovResponseBuilder()
+                .jobName(jobName)
+                .build());
     }
 
-    private String getJob(Request req, Response res) {
-        String jobname = req.params("jobName");
-        Job j = jobs.get(jobname);
-        if(j == null) {
+    private String getJob(final Request req, final Response res) throws JsonProcessingException {
+        final String jobname = req.params("jobName");
+        final Job job = jobs.get(jobname);
+        if(job == null) {
             return "GET here with a valid job name to see its status";
         } else {
-            JsonObject obj = new JsonObject();
-            obj.addProperty("jobName", jobname);
-            obj.addProperty("status", j.getStaus().toString());
-            obj.addProperty("statusString", j.getStatusString());
-            obj.addProperty("sample", j.getSample());
-            obj.addProperty("duration", j.getDuration() + " ms");
-            return obj.toString();
+            return mapper.writeValueAsString(new GetJobResponseBuilder()
+                    .jobName(jobname)
+                    .sample(job.getSample())
+                    .status(job.getStaus().toString())
+                    .stautsString(job.getStatusString())
+                    .durationMills(job.getDuration())
+                    .build());
         }
     }
 
-    private String getMarkov(Request req, Response res) {
-        String user = req.params("user");
-        String markov = req.params("markov");
+    private String getMarkov(final Request req, final Response res) throws JsonProcessingException {
+        final String user = req.params("user");
+        final String markovName = req.params("markov");
 
-        Markov m = markovs.get(user).get(markov);
-        if(m != null) {
+        final Markov markov = markovs.get(user).get(markovName);
+        if(markov != null) {
             try {
-                JsonObject obj = new JsonObject();
-                obj.addProperty("sentence", m.generateSentence());
-                return obj.toString();
+                return mapper.writeValueAsString(new SentenceResponseBuilder()
+                        .sentence(markov.generateSentence())
+                        .build());
             } catch (IllegalStateException ise) {
-                res.status(400);
-                JsonObject obj = new JsonObject();
-                obj.addProperty("message", ise.getMessage());
-                return obj.toString();
+                res.status(500);
+                return ise.getMessage();
             }
         } else {
             return "GET here with a valid markov name to get a sentence";
         }
     }
 
-    private String getJobs(Request req, Response res) {
-        JsonArray arr = new JsonArray();
-        jobs.keySet().forEach(arr::add);
-        JsonObject obj = new JsonObject();
-        obj.add("jobs", arr);
-        return obj.toString();
+    private String getJobs(final Request req, final Response res) throws JsonProcessingException {
+        return mapper.writeValueAsString(new GetJobsResponseBuilder()
+                .jobs(markovs.keySet())
+                .build());
     }
 
     public static void main(String[] args) {
