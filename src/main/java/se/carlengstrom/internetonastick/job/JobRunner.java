@@ -39,8 +39,8 @@ public class JobRunner {
                             forkThread(m);
                         }
                     }
+                    Thread.sleep(1000);
                 }
-                Thread.sleep(1000);
                 } catch (InterruptedException ex) {
                     isRunning = false;
                 }
