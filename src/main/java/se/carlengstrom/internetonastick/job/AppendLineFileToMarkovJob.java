@@ -39,7 +39,7 @@ public class AppendLineFileToMarkovJob extends Job {
                 .appendMarkovFromLineDelimitedText(getMarkov(), directory + "/source.txt", this);
         } else if (delimiter == Delimiter.PERIOD) {
             MarkovBuilder
-                .appendMarkovFromPeriodDelimitedText(getMarkov(), directory + "/source.txt", this);
+                .appendMarkovFromText(getMarkov(), directory + "/source.txt", this);
         }
 
         final ObjectMapper mapper = new ObjectMapper();
