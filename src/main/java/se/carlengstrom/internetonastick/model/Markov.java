@@ -10,7 +10,7 @@ import se.carlengstrom.internetonastick.job.Job;
  */
 public class Markov {
 
-    private final int ANCESTOR_LEVEL = 2;
+    private final int ANCESTOR_LEVEL = 3;
 
     private final Map<Long, Set<Long>> parentsOf = new HashMap<>();
     private final Map<Long, Set<Long>> childrenOf = new HashMap<>();
@@ -34,22 +34,28 @@ public class Markov {
     }
 
     public void insertSentence(String sentence, Job job) {
-        String[] words = sentence.split(" ");
+        final Stream<String> words = Stream.of(sentence.split(" "))
+            .filter(x -> !x.isEmpty());
 
-        LinkedList<Node> ancestors = new LinkedList<>();
+        final LinkedList<Node> ancestors = new LinkedList<>();
         Node parent = source;
         ancestors.add(parent);
 
-        for(int i = 0 ; i < words.length ; i++) {
-            String next = words[i];
-            Optional<Node> maybeMe = childrenOf(parent).filter(node -> node.getWord().equals(next)).findFirst();
-            Node me = maybeMe.isPresent() ? maybeMe.get() : makeNewNode(next);
+        for(final String next : words.collect(Collectors.toList())) {
+            // Look for a previous parse of '<parent> <next>'
+            final Optional<Node> maybeMe = childrenOf(parent).filter(node -> node.getWord().equals(next)).findFirst();
+            // If present, no need to create this node
+            final Node me = maybeMe.isPresent() ? maybeMe.get() : makeNewNode(next);
 
+            // Idempotent
             addChild(parent, me);
-
+            ancestors.addFirst(me);
+            // Has the combination "<parent> <next>" been parsed before?
             //If I am a new node some back-searching is needeed
             if(!maybeMe.isPresent()) {
-                connectAncestorsOf(me, ancestors, words, i);
+                if(ancestors.size() == ANCESTOR_LEVEL ) {
+                    mapAncestors(ancestors);
+                }
 
                 if(!nodesByWord.containsKey(next)) {
                     nodesByWord.put(next.intern(), new HashSet<>());
@@ -58,9 +64,9 @@ public class Markov {
             }
 
             parent = me;
-            ancestors.add(me);
-            if(ancestors.size() > ANCESTOR_LEVEL) {
-                ancestors.remove();
+
+            if(ancestors.size() >= ANCESTOR_LEVEL) {
+                ancestors.removeLast();
             }
         }
 
@@ -70,6 +76,28 @@ public class Markov {
         if(job != null && sentenceCounter % 1000 == 0) {
             job.setStatus("Read " + sentenceCounter + " sentences.");
             job.setSample(generateSentence());
+        }
+    }
+
+    private void mapAncestors(final LinkedList<Node> ancestors) {
+        final LinkedList<Node> tmp = new LinkedList<>(ancestors);
+        final Node start = tmp.removeFirst();
+        if(!nodesByWord.containsKey(start.getWord())) {
+            return;
+        }
+        Set<Node> candidates = new HashSet<>(nodesByWord.get(start.getWord()));
+        while(!tmp.isEmpty()) {
+            final Node parent = tmp.removeFirst();
+            candidates = candidates.stream()
+                .flatMap(x -> parentsOf(x))
+                .filter(x -> x.getWord().equals(parent.getWord()))
+                .collect(Collectors.toSet());
+        }
+         // Nodes in candiates and oldestAncestor should share parents
+        final Node oldestAncestor = ancestors.getLast();
+        for(final Node n : candidates) {
+            parentsOf(n).forEach(x -> addChild(x, oldestAncestor));
+            parentsOf(oldestAncestor).forEach(x -> addChild(x, n));
         }
     }
 
@@ -83,27 +111,6 @@ public class Markov {
             childrenOf.put(parent.getId(), new HashSet<>());
         }
         childrenOf.get(parent.getId()).add(me.getId());
-    }
-
-    private void connectAncestorsOf(Node me, LinkedList<Node> ancestors, String[] data, int indexOfMe) {
-        if(indexOfMe < ANCESTOR_LEVEL) { return; }
-
-        ArrayList<Node> ancestry = new ArrayList<>(ancestors);
-        Collections.reverse(ancestry);
-        Stream<Node> nodeStream = nodesByWord.get(data[indexOfMe-1]).stream();
-        nodeStream.filter(n -> hasCorrectLineage(n, ancestry, ANCESTOR_LEVEL))
-                .forEach(node -> addChild(node, me));
-    }
-
-    private boolean hasCorrectLineage(Node n, ArrayList<Node> ancestry, int ancestor_level) {
-        Stream<Node> validNodes = Stream.of(n);
-
-        for(int i = 0 ; i < ancestor_level ; i++) {
-            final int lol = i;
-            validNodes = validNodes.filter(node -> node.getWord().equals(ancestry.get(lol).getWord()))
-                    .map(node -> parentsOf(node)).flatMap(a -> a);
-        }
-        return validNodes.findAny().isPresent();
     }
 
     private Node makeNewNode(String next) {
