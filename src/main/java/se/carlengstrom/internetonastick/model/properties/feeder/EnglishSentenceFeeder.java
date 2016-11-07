@@ -1,4 +1,4 @@
-package se.carlengstrom.internetonastick.model.builders.feeders;
+package se.carlengstrom.internetonastick.model.properties.feeder;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -17,9 +17,13 @@ public class EnglishSentenceFeeder implements SentenceFeeder {
   private final BreakIterator bi;
   private String textBeingProcessed = "";
 
-  public EnglishSentenceFeeder(final InputStream stream) throws UnsupportedEncodingException {
-    this.reader = new BufferedReader(new InputStreamReader(stream, "UTF8"));
-    this.bi = BreakIterator.getSentenceInstance(Locale.ENGLISH);
+  public EnglishSentenceFeeder(final InputStream stream) {
+    try {
+      this.reader = new BufferedReader(new InputStreamReader(stream, "UTF8"));
+      this.bi = BreakIterator.getSentenceInstance(Locale.ENGLISH);
+    } catch (final UnsupportedEncodingException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override

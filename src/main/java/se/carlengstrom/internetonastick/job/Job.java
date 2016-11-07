@@ -74,6 +74,7 @@ public abstract class Job implements Runnable {
         } catch (Exception e) {
             status = JobState.FAILED;
             statusString = "Job failed due to " + e.getClass().getName() + ": " + e.getMessage();
+            e.printStackTrace();
         } finally {
             endTime = System.currentTimeMillis();
         }

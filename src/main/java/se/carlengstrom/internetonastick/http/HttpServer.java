@@ -10,15 +10,18 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.norberg.automatter.jackson.AutoMatterModule;
 import se.carlengstrom.internetonastick.http.payload.*;
 import se.carlengstrom.internetonastick.job.AppendLineFileToMarkovJob;
-import se.carlengstrom.internetonastick.job.AppendLineFileToMarkovJob.Delimiter;
 import se.carlengstrom.internetonastick.job.Job;
 import se.carlengstrom.internetonastick.job.JobRunner;
 import se.carlengstrom.internetonastick.model.Markov;
+import se.carlengstrom.internetonastick.model.properties.feeder.NewLineDelimitedFeeder;
+import se.carlengstrom.internetonastick.model.properties.joiner.BasicJoiners;
+import se.carlengstrom.internetonastick.model.properties.splitter.BasicSplitters;
 import spark.Request;
 import spark.Response;
 
 import javax.xml.bind.DatatypeConverter;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.HashMap;
@@ -74,7 +77,10 @@ public class HttpServer {
         if(!markovs.containsKey(user)) {
             markovs.put(user, new HashMap<>());
         }
-        markovs.get(user).put(createRequest.name(), new Markov());
+        markovs.get(user).put(createRequest.name(), new Markov(
+            BasicSplitters.SPACE_SPLITTER,
+            3,
+            BasicJoiners.SPACE_JOINER));
 
         final String path = "data/"+user+"/"+createRequest.name()+"/";
         final File directory = new File(path);
@@ -126,8 +132,7 @@ public class HttpServer {
         final Markov markov = markovs.get(user).get(markovName);
         final AppendLineFileToMarkovJob job = new AppendLineFileToMarkovJob(
             markov,
-            folder.getAbsolutePath(),
-            Delimiter.LINE);
+            new NewLineDelimitedFeeder(new FileInputStream(folder.getAbsolutePath() + "/source.txt")));
 
         runner.scheduleJob(job);
 
