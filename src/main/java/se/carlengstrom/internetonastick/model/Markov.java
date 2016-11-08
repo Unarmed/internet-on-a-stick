@@ -12,8 +12,8 @@ import java.util.stream.Stream;
  * Created by eng
  */
 public class Markov {
-    private final Map<Long, Set<Long>> parentsOf = new HashMap<>();
-    private final Map<Long, Set<Long>> childrenOf = new HashMap<>();
+    private final Map<Long, HashMap<Long,Long>> parentsOf = new HashMap<>();
+    private final Map<Long, HashMap<Long,Long>> childrenOf = new HashMap<>();
     private final Map<Long, Node> nodeById = new HashMap<>();
     private final Map<String, Set<Node>> nodesByWord = new HashMap<>();
     private long nodeCounter = 1;
@@ -118,24 +118,24 @@ public class Markov {
     }
 
     private void fuseNodes(final Node keep, final Node discard) {
-        for(final Long l : parentsOf.get(discard.getId())) {
+        for(final Long l : parentsOf.get(discard.getId()).keySet()) {
             final Node n = nodeById.get(l);
             addChild(n, keep);
         }
 
-        final Set<Long> remove = parentsOf.remove(discard.getId());
+        final Set<Long> remove = parentsOf.remove(discard.getId()).keySet();
         remove.forEach(x -> childrenOf.get(x).remove(discard.getId()));
 
-        final Set<Long> maybeChildren = childrenOf.get(discard.getId());
-        if(maybeChildren != null) {
-            maybeChildren.stream()
+        if(childrenOf.get(discard.getId()) != null) {
+            final Set<Long> children = childrenOf.get(discard.getId()).keySet();
+            children.stream()
                 .map(l -> nodeById.get(l))
                 .forEach(child -> addChild(keep, child));
         }
 
-        final Set<Long> children = childrenOf.remove(discard.getId());
-        if(children != null) {
-            children.forEach(x -> parentsOf.get(x).remove(discard.getId()));
+        final Map<Long, Long> maybeChildren = childrenOf.remove(discard.getId());
+        if(maybeChildren != null) {
+            maybeChildren.keySet().forEach(x -> parentsOf.get(x).remove(discard.getId()));
         }
         // Remove discard from word lookups
         nodesByWord.get(discard.getWord()).remove(discard);
@@ -145,14 +145,14 @@ public class Markov {
 
     private void addChild(final Node parent, final Node me) {
         if(!parentsOf.containsKey(me.getId())) {
-            parentsOf.put(me.getId(), new HashSet<>());
+            parentsOf.put(me.getId(), new HashMap<>());
         }
-        parentsOf.get(me.getId()).add(parent.getId());
+        parentsOf.get(me.getId()).compute(parent.getId(),(k,v) -> v == null ? 1 : v++);
 
         if(!childrenOf.containsKey(parent.getId())) {
-            childrenOf.put(parent.getId(), new HashSet<>());
+            childrenOf.put(parent.getId(), new HashMap<>());
         }
-        childrenOf.get(parent.getId()).add(me.getId());
+        childrenOf.get(parent.getId()).compute(me.getId(),(k,v) -> v == null ? 1 : v+1);
     }
 
     private Node makeNewNode(String next) {
@@ -163,13 +163,13 @@ public class Markov {
     }
 
     private Stream<Node> parentsOf(Node child) {
-        Set<Long> data = parentsOf.containsKey(child.getId()) ? parentsOf.get(child.getId()) : Collections.emptySet();
-        return data.stream().map(id -> nodeById.get(id));
+        Map<Long, Long> data = parentsOf.containsKey(child.getId()) ? parentsOf.get(child.getId()) : Collections.emptyMap();
+        return data.keySet().stream().map(id -> nodeById.get(id));
     }
 
     private Stream<Node> childrenOf(Node parent) {
-        Set<Long> data = childrenOf.containsKey(parent.getId()) ? childrenOf.get(parent.getId()) : Collections.emptySet();
-        return data.stream().map(id -> nodeById.get(id));
+        Map<Long, Long> data = childrenOf.containsKey(parent.getId()) ? childrenOf.get(parent.getId()) : Collections.emptyMap();
+        return data.keySet().stream().map(id -> nodeById.get(id));
     }
 
     public String generateSentence() {
@@ -182,8 +182,18 @@ public class Markov {
         final List<Node> sentence = new LinkedList<>();
 
         while(current != sink) {
-            final List<Node> children = childrenOf(current).collect(Collectors.toList());
-            current = children.get((int)(Math.random()*children.size()));
+            final Map<Long, Long> children = childrenOf.get(current.getId());
+            final long totalSize = children.values().stream().reduce(0L, (l1,l2) -> l1 + l2);
+            final long target = (long)(Math.random()*totalSize);
+            long currentValue = 0L;
+            for(final Map.Entry<Long,Long> e : children.entrySet()) {
+                if(currentValue + e.getValue() >= target) {
+                    current = nodeById.get(e.getKey());
+                    break;
+                } else {
+                    currentValue += e.getValue();
+                }
+            }
             if(current != sink) {
                 sentence.add(current);
             }
@@ -199,10 +209,10 @@ public class Markov {
     }
 
     public Stream<Node> getParentsOf(final Node n) {
-        return parentsOf.get(n.getId()).stream().map(x -> nodeById.get(x));
+        return parentsOf.get(n.getId()).keySet().stream().map(x -> nodeById.get(x));
     }
 
     public Stream<Node> getChildrenOf(final Node n) {
-        return childrenOf.get(n.getId()).stream().map(x -> nodeById.get(x));
+        return childrenOf.get(n.getId()).keySet().stream().map(x -> nodeById.get(x));
     }
 }
