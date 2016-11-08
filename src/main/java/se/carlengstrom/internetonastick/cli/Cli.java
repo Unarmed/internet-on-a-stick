@@ -28,45 +28,50 @@ public class Cli {
     runner.startScheduler();
 
     try (final BufferedReader inReader = new BufferedReader(new InputStreamReader(System.in))) {
-      String read = null;
+      String read;
       System.out.println("Welcome to Internet On A Stick CLI!");
-      while((read = inReader.readLine()) != null) {
-        if(read.equals("quit")) {
-          runner.stopScheduler();
-          System.exit(0);
-        } else if(read.startsWith("create")) {
-          final String[] parts = read.split(" ");
-          final String markovName = parts[1];
-          inMemoryMarkovs.put(markovName, new Markov(
+      while ((read = inReader.readLine()) != null) {
+        try {
+          if (read.equals("quit")) {
+            runner.stopScheduler();
+            System.exit(0);
+          } else if (read.startsWith("create")) {
+            final String[] parts = read.split(" ");
+            final String markovName = parts[1];
+            inMemoryMarkovs.put(markovName, new Markov(
                     BasicSplitters.SPLITTERS.get(parts[2]),
                     Integer.parseInt(parts[3]),
                     BasicJoiners.JOINERS.get(parts[4])));
-          System.out.println("Created new empty markov chain");
-        } else if (read.startsWith("load")) {
-          final String[] parts = read.split(" ");
-          final String markovName = parts[1];
-          final Markov markovToAddTo = inMemoryMarkovs.get(markovName);
-          final AppendLineFileToMarkovJob job =
-              new AppendLineFileToMarkovJob(markovToAddTo, getFeeder(parts[2], parts[3]));
+            System.out.println("Created new empty markov chain");
+          } else if (read.startsWith("load")) {
+            final String[] parts = read.split(" ");
+            final String markovName = parts[1];
+            final Markov markovToAddTo = inMemoryMarkovs.get(markovName);
+            final AppendLineFileToMarkovJob job =
+                    new AppendLineFileToMarkovJob(markovToAddTo, getFeeder(parts[2], parts[3]));
 
-          runner.scheduleJob(job);
+            runner.scheduleJob(job);
 
-          while(job.getStaus() != JobState.DONE && job.getStaus() != JobState.FAILED) {
-            System.out.println("Job " + markovName + " has status: " + job.getStaus() + " (" + job.getStatusString() + ")");
-            Thread.sleep(1000);
-          }
+            while (job.getStaus() != JobState.DONE && job.getStaus() != JobState.FAILED) {
+              System.out.println("Job " + markovName + " has status: " + job.getStaus() + " (" + job.getStatusString() + ")");
+              Thread.sleep(1000);
+            }
 
-          System.out.println("Job " + markovName + " terminated with status: " + job.getStaus());
-        } else {
-          final Markov toUse = inMemoryMarkovs.get(read);
-          if(toUse != null) {
-            System.out.println(inMemoryMarkovs.get(read).generateSentence());
+            System.out.println("Job " + markovName + " terminated with status: " + job.getStaus());
           } else {
-            System.out.println("No such markov: " + read);
+            final Markov toUse = inMemoryMarkovs.get(read);
+            if (toUse != null) {
+              System.out.println(inMemoryMarkovs.get(read).generateSentence());
+            } else {
+              System.out.println("No such markov: " + read);
+            }
           }
+        } catch (Throwable t) {
+          System.out.println("OW!");
+          t.printStackTrace();
         }
       }
-    } catch (InterruptedException | IOException e) {
+    } catch (IOException e) {
       e.printStackTrace();
     }
   }
