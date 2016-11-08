@@ -1,14 +1,16 @@
 package se.carlengstrom.internetonastick.cli;
 
 import se.carlengstrom.internetonastick.job.AppendLineFileToMarkovJob;
-import se.carlengstrom.internetonastick.job.AppendLineFileToMarkovJob.Delimiter;
 import se.carlengstrom.internetonastick.job.JobRunner;
 import se.carlengstrom.internetonastick.job.JobState;
 import se.carlengstrom.internetonastick.model.Markov;
+import se.carlengstrom.internetonastick.model.properties.feeder.EnglishSentenceFeeder;
+import se.carlengstrom.internetonastick.model.properties.feeder.NewLineDelimitedFeeder;
+import se.carlengstrom.internetonastick.model.properties.feeder.SentenceFeeder;
+import se.carlengstrom.internetonastick.model.properties.joiner.BasicJoiners;
+import se.carlengstrom.internetonastick.model.properties.splitter.BasicSplitters;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -32,20 +34,25 @@ public class Cli {
         if(read.equals("quit")) {
           runner.stopScheduler();
           System.exit(0);
-        } else if(read.startsWith("load")) {
-          final String markovName = read.split(" ")[1];
-          if(!inMemoryMarkovs.containsKey(markovName)) {
-            inMemoryMarkovs.put(markovName, new Markov());
-          }
-
+        } else if(read.startsWith("create")) {
+          final String[] parts = read.split(" ");
+          final String markovName = parts[1];
+          inMemoryMarkovs.put(markovName, new Markov(
+                    BasicSplitters.SPLITTERS.get(parts[2]),
+                    Integer.parseInt(parts[3]),
+                    BasicJoiners.JOINERS.get(parts[4])));
+          System.out.println("Created new empty markov chain");
+        } else if (read.startsWith("load")) {
+          final String[] parts = read.split(" ");
+          final String markovName = parts[1];
           final Markov markovToAddTo = inMemoryMarkovs.get(markovName);
           final AppendLineFileToMarkovJob job =
-              new AppendLineFileToMarkovJob(markovToAddTo, markovName, Delimiter.PERIOD);
+              new AppendLineFileToMarkovJob(markovToAddTo, getFeeder(parts[2], parts[3]));
 
           runner.scheduleJob(job);
 
           while(job.getStaus() != JobState.DONE && job.getStaus() != JobState.FAILED) {
-            System.out.println("Job " + markovName + " has status: " + job.getStaus());
+            System.out.println("Job " + markovName + " has status: " + job.getStaus() + " (" + job.getStatusString() + ")");
             Thread.sleep(1000);
           }
 
@@ -64,7 +71,18 @@ public class Cli {
     }
   }
 
-  public static void main(String[] args) {
+  private SentenceFeeder getFeeder(final String name, final String file) throws FileNotFoundException {
+    switch (name) {
+      case "english":
+        return new EnglishSentenceFeeder(new FileInputStream(file));
+      case "newline":
+        return new NewLineDelimitedFeeder(new FileInputStream(file));
+      default:
+        throw new RuntimeException("No such sentence feeder" + name);
+    }
+  }
+
+  public static void main(final String[] args) {
     JobRunner runner = new JobRunner();
     runner.startScheduler();
     final Cli cli = new Cli(runner);

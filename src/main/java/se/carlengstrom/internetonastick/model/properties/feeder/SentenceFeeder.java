@@ -1,4 +1,4 @@
-package se.carlengstrom.internetonastick.model.builders.feeders;
+package se.carlengstrom.internetonastick.model.properties.feeder;
 
 import java.io.IOException;
 

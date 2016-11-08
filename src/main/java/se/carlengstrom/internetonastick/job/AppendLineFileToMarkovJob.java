@@ -5,9 +5,10 @@
  */
 package se.carlengstrom.internetonastick.job;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import se.carlengstrom.internetonastick.model.Markov;
-import se.carlengstrom.internetonastick.model.builders.MarkovBuilder;
+import se.carlengstrom.internetonastick.model.MarkovBuilder;
+import se.carlengstrom.internetonastick.model.properties.BuilderParameters;
+import se.carlengstrom.internetonastick.model.properties.feeder.SentenceFeeder;
 
 import java.io.IOException;
 
@@ -16,33 +17,24 @@ import java.io.IOException;
  * @author Eng
  */
 public class AppendLineFileToMarkovJob extends Job {
+    private final SentenceFeeder feeder;
 
-    public enum Delimiter {
-        LINE,
-        PERIOD
-    }
-
-    private final String directory;
-    private final Delimiter delimiter;
-
-    public AppendLineFileToMarkovJob(Markov m, String directory, Delimiter delimiter) {
-        super(m);
-        this.directory = directory;
-        this.delimiter = delimiter;
+    public AppendLineFileToMarkovJob(final Markov markov, final SentenceFeeder feeder) {
+        super(markov);
+        this.feeder = feeder;
     }
     
     
     @Override
     public void jobRun() throws IOException {
-        if(delimiter == Delimiter.LINE) {
-            MarkovBuilder
-                .appendMarkovFromLineDelimitedText(getMarkov(), directory + "/source.txt", this);
-        } else if (delimiter == Delimiter.PERIOD) {
-            MarkovBuilder
-                .appendMarkovFromText(getMarkov(), directory + "/source.txt", this);
-        }
+        final BuilderParameters params = new BuilderParameters(
+            getMarkov(),
+            feeder,
+            this);
 
-        final ObjectMapper mapper = new ObjectMapper();
-        mapper.writeValueAsString(getMarkov());
+        MarkovBuilder.appendToMarkov(params);
+
+        //final ObjectMapper mapper = new ObjectMapper();
+        //mapper.writeValueAsString(getMarkov());
     }
 }

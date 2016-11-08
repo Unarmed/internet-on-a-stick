@@ -1,8 +1,12 @@
 package se.carlengstrom.internetonastick.model;
 
 import org.junit.Test;
+import se.carlengstrom.internetonastick.model.properties.joiner.BasicJoiners;
+import se.carlengstrom.internetonastick.model.properties.splitter.BasicSplitters;
 
 import static org.junit.Assert.*;
+
+import java.util.stream.Stream;
 
 /**
  * These tests abuse knowledge of the inner workings of Markov. I don't like it, but since the output of Markov is
@@ -11,45 +15,67 @@ import static org.junit.Assert.*;
  */
 public class MarkovTest {
 
-    @Test
-    public void TestAddSingleWordAssignsAtTwo() {
-        Markov m = new Markov();
-        m.insertSentence("Test");
-        Node n = m.getAllNodes().get(2l); //Abusing the fact that I know the id of 'Test'
-        assertEquals("Test", n.getWord());
-    }
+  @Test
+  public void testSourceParenting() {
+    final Markov m = new Markov(BasicSplitters.CHAR_SPLITTER,1, BasicJoiners.NOTHING_JOINER);
+    m.insertSentence("a", null);
+    final Stream<Node> as = m.getNodesForName("a");
+    assertTrue(as.allMatch(x -> m.getParentsOf(x).anyMatch( y -> y.getId() == 0)));
+  }
 
-    @Test
-    public void TestAddSingleWordGetsSourceAsParent() {
-        Markov m = new Markov();
-        m.insertSentence("Test");
-        assertTrue(m.getParentsOf().get(2l).contains(0l));
-    }
+  @Test
+  public void testSinkParenting() {
+    final Markov m = new Markov(BasicSplitters.CHAR_SPLITTER,1, BasicJoiners.NOTHING_JOINER);
+    m.insertSentence("a", null);
+    final Stream<Node> as = m.getNodesForName("a");
+    assertTrue(as.allMatch(x -> m.getChildrenOf(x).anyMatch( y -> y.getId() == 1)));
+  }
 
-    @Test
-    public void TestAddSingleWordGetsSinkAsChild() {
-        Markov m = new Markov();
-        m.insertSentence("Test");
-        assertTrue(m.getChildrenOf().get(2l).contains(1l));
-    }
+  @Test
+  public void testSimpleCrossover() {
+    final Markov m = new Markov(BasicSplitters.CHAR_SPLITTER,1, BasicJoiners.NOTHING_JOINER);
+    m.insertSentence("ab", null);
+    m.insertSentence("cb", null);
+    final Stream<Node> bs = m.getNodesForName("b");
+    assertTrue(bs.allMatch(x -> m.getParentsOf(x).count() == 2));
+  }
 
-    @Test
-    public void TestCrossingCorrectNumberOfResults() {
-        Markov m = new Markov();
-        m.insertSentence("a b c");
-        m.insertSentence("a b d");
-        long bId = 3; //Abusing that i know that the id of 'b' is 3
+  @Test
+  public void testLongerCrossover() {
+    final Markov m = new Markov(BasicSplitters.CHAR_SPLITTER,3, BasicJoiners.NOTHING_JOINER);
+    m.insertSentence("abxy", null);
+    m.insertSentence("cbxy", null);
+    final Stream<Node> bs = m.getNodesForName("b");
+    assertTrue(bs.allMatch(x -> m.getParentsOf(x).count() == 2));
 
-        assertEquals(2, m.getChildrenOf().get(bId).size());
-    }
+    final Stream<Node> xs = m.getNodesForName("x");
+    assertTrue(xs.allMatch(x -> m.getParentsOf(x).count() == 1));
 
-    @Test
-    public void TestLateCrossingCorrectNumberOfResults() {
-        Markov m = new Markov();
-        m.insertSentence("1 a b c");
-        m.insertSentence("2 a b d");
-        long bId = 4; //Abusing that i know that the id of 'b' is 4
+    final Stream<Node> ys = m.getNodesForName("y");
+    assertTrue(ys.allMatch(x -> m.getParentsOf(x).count() == 1));
+  }
 
-        assertEquals(2, m.getChildrenOf().get(bId).size());
-    }
+  @Test
+  public void testCrossoverMergesNodes() {
+    final Markov m = new Markov(BasicSplitters.CHAR_SPLITTER,1, BasicJoiners.NOTHING_JOINER);
+    m.insertSentence("ab", null);
+    m.insertSentence("cb", null);
+    assertEquals(1, m.getNodesForName("b").count());
+  }
+
+  @Test
+  public void testDoubleFuse() {
+    final Markov m = new Markov(BasicSplitters.CHAR_SPLITTER,2, BasicJoiners.NOTHING_JOINER);
+    m.insertSentence("aHe", null);
+    m.insertSentence("bHe", null);
+    m.insertSentence("cHe", null);
+    assertEquals(1, m.getNodesForName("H").count());
+  }
+
+  @Test
+  public void testSentence() {
+    final String sentence = "Hello there, this is a very nice test sentence that contains a lot of duplicate letters and other interesting things";
+    final Markov m = new Markov(BasicSplitters.CHAR_SPLITTER,1, BasicJoiners.NOTHING_JOINER);
+    m.insertSentence(sentence, null);
+  }
 }
