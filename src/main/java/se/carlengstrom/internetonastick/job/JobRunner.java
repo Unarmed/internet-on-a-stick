@@ -5,14 +5,13 @@
  */
 package se.carlengstrom.internetonastick.job;
 
+import se.carlengstrom.internetonastick.model.Markov;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import se.carlengstrom.internetonastick.model.Markov;
 
 /**
  *
@@ -52,10 +51,12 @@ public class JobRunner {
         Thread t = new Thread(() -> {
             try {
                 ConcurrentLinkedQueue<Job> myJobs = jobs.get(m);
-                while(isRunning) {
-                    if(!myJobs.isEmpty()) {
+                while (isRunning) {
+                    if (!myJobs.isEmpty()) {
                         Job j = myJobs.poll();
-                        j.run();
+                        if (j != null) {
+                            j.run();
+                        }
                     } else {
                         Thread.sleep(1000);
                     }
