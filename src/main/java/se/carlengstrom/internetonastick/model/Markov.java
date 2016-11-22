@@ -147,7 +147,7 @@ public class Markov {
         if(!parentsOf.containsKey(me.getId())) {
             parentsOf.put(me.getId(), new HashMap<>());
         }
-        parentsOf.get(me.getId()).compute(parent.getId(),(k,v) -> v == null ? 1 : v++);
+        parentsOf.get(me.getId()).compute(parent.getId(),(k,v) -> v == null ? 1 : v+1);
 
         if(!childrenOf.containsKey(parent.getId())) {
             childrenOf.put(parent.getId(), new HashMap<>());
