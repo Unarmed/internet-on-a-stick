@@ -187,7 +187,7 @@ public class Markov {
             final long target = (long)(Math.random()*totalSize);
             long currentValue = 0L;
             for(final Map.Entry<Long,Long> e : children.entrySet()) {
-                if(currentValue + e.getValue() >= target) {
+                if(currentValue + e.getValue() > target) {
                     current = nodeById.get(e.getKey());
                     break;
                 } else {
